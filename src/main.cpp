@@ -1,22 +1,4 @@
-/*
-  This sketch receive a DMX universes via Artnet to control a
-  strip of ws2811 leds via Adafruit's NeoPixel library:
-
-  https://github.com/rstephan/ArtnetWifi
-  https://github.com/adafruit/Adafruit_NeoPixel
-*/
-
-#include <ESP8266WiFi.h>         // https://github.com/esp8266/Arduino
-#include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
-#include <WiFiManager.h>         // https://github.com/tzapu/WiFiManager
-#include <WiFiClient.h>
-#include <ArtnetWifi.h>          // https://github.com/rstephan/ArtnetWifi 
-#include <Adafruit_NeoPixel.h>
-#include <FS.h>
-
-#include "setup_ota.h"
-#include "neopixel_mode.h"
+#include "main.h"
 
 Config config;
 ESP8266WebServer server(80);
@@ -25,7 +7,7 @@ const char* version = __DATE__ " / " __TIME__;
 float temperature = 0, fps = 0;
 
 // Neopixel settings
-const byte dataPin = D2;
+const byte dataPin = 2;
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, dataPin, NEO_GRBW + NEO_KHZ800); // start with one pixel
 
 // Artnet settings
