@@ -17,7 +17,6 @@ bool saveConfig(void);
 // void handleUpdate1(void);
 // void handleUpdate2(void);
 void handleDirList(AsyncWebServerRequest *request);
-void handleJSON(AsyncWebServerRequest *request, JsonVariant &json);
 
 struct Config {
   int universe;

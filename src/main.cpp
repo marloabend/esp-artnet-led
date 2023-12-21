@@ -8,14 +8,14 @@ const char* host = "Art-Net LED";
 const char* password = "12345678";
 const char* version = __DATE__ " / " __TIME__;
 
-float fps = 0;
-
 // Neopixel settings
 Adafruit_NeoPixel strip = Adafruit_NeoPixel();
 
 // Artnet settings
 ArtnetWifi artnet;
 unsigned int packetCounter = 0;
+unsigned int packetCounterPPS = 0;
+float pps = 0;
 
 // Global universe buffer
 struct {
@@ -34,12 +34,13 @@ void (*mode[]) (uint16_t, uint16_t, uint8_t, uint8_t *) {
 long tic_loop = 0;
 long tic_fps = 0;
 long tic_packet = 0;
-long tic_web = 0;
 long frameCounter = 0;
+float fps = 0;
 
 // This will be called for each UDP packet received
 void onDmxPacket(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t * data) {  
   packetCounter++;
+  packetCounterPPS++;
 
   // Copy the data from the UDP packet over to the global universe buffer
   global.universe = universe;
@@ -102,7 +103,6 @@ void setup() {
   });
 
   server.on("/discovery", HTTP_GET, [](AsyncWebServerRequest *request) {
-    tic_web = millis();
     StaticJsonDocument<300> data;
     data["chipId"] = ESP.getFlashChipId();
     data["version"] = version;
@@ -116,7 +116,6 @@ void setup() {
   });
 
   server.on("/defaults", HTTP_GET, [](AsyncWebServerRequest *request) {
-    tic_web = millis();
     Serial.println("GET /defaults");
     request->send(200, "text/plain", "");
     delay(2000);
@@ -129,7 +128,6 @@ void setup() {
   });
 
   server.on("/reconnect", HTTP_GET, [](AsyncWebServerRequest *request) {
-    tic_web = millis();
     Serial.println("GET /reconnect");
     request->send(200, "text/plain", "");
     delay(2000);
@@ -143,8 +141,7 @@ void setup() {
   });
 
   server.on("/reset", HTTP_GET, [](AsyncWebServerRequest *request) {
-    tic_web = millis();
-    Serial.println("handleReset");
+    Serial.println("GET /reset");
     request->send(200, "text/plain", "");
     delay(2000);
     singleRed();
@@ -152,13 +149,13 @@ void setup() {
   });
 
   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *request) {
-    Serial.println("HTTP_GET /monitor");
-    tic_web = millis();
+    Serial.println("GET /status");
     StaticJsonDocument<300> data;
-    data["uptime"]  = long(millis() / 1000);
+    data["uptime"] = long(millis() / 1000);
     data["packets"] = packetCounter;
-    data["fps"]     = fps;
-    data["heap"]    = ESP.getFreeHeap();
+    data["pps"] = pps;
+    data["fps"] = fps;
+    data["heap"] = ESP.getFreeHeap();
 
     String json;
     serializeJson(data, json);
@@ -167,8 +164,7 @@ void setup() {
   });
 
   server.on("/dir", HTTP_GET, [](AsyncWebServerRequest *request) {
-    tic_web = millis();
-    Serial.println("handleDirList");
+    Serial.println("GET /dir");
     handleDirList(request);
   });
 
@@ -194,8 +190,6 @@ void setup() {
   });
 
   server.on("/config", HTTP_GET, [](AsyncWebServerRequest *request) {
-    Serial.println("HTTP_GET /config");
-    tic_web = millis();
     StaticJsonDocument<300> data;
     data["pixels"] = config.pixels;
     data["colorMapping"] = config.colorMapping;
@@ -220,10 +214,6 @@ void setup() {
     config.universe = jsonObj["universe"];
     config.offset = jsonObj["offset"];
 
-    if (saveConfig() && loadConfig()) {
-      updateNeopixelStrip();
-    }
-
     String serializedJson;
     serializeJson(jsonObj, serializedJson);
 
@@ -238,10 +228,6 @@ void setup() {
 
     config.mode = jsonObj["mode"];
 
-    if (saveConfig() && loadConfig()) {
-      updateNeopixelStrip();
-    }
-
     String serializedJson;
     serializeJson(jsonObj, serializedJson);
 
@@ -250,13 +236,28 @@ void setup() {
   server.addHandler(modeHandler);
 
   AsyncCallbackJsonWebHandler* configHandler = new AsyncCallbackJsonWebHandler("/config", [](AsyncWebServerRequest *request, JsonVariant &json) {
-    Serial.println("HTTP_POST /config");
-    tic_web = millis();
-    handleJSON(request, json);
+    Serial.println("POST /config");
+    StaticJsonDocument<300> data;
+    data = json.as<JsonObject>();
+    JsonObject jsonObj = json.as<JsonObject>();
+
+    config.pixels = jsonObj["pixels"];
+    config.colorMapping = jsonObj["colorMapping"].as<String>();
+    config.white = jsonObj["white"];
+    config.brightness = jsonObj["brightness"];
+    config.hsv = jsonObj["hsv"];
+    config.reverse = jsonObj["reverse"];
+    config.speed = jsonObj["speed"];
+    config.split = jsonObj["split"];
 
     if (saveConfig() && loadConfig()) {
       updateNeopixelStrip();
     }
+
+    String serializedJson;
+    serializeJson(jsonObj, serializedJson);
+
+    request->send(200, "application/json", serializedJson);
   });
   server.addHandler(configHandler);
 
@@ -275,9 +276,7 @@ void setup() {
   tic_loop   = millis();
   tic_packet = millis();
   tic_fps    = millis();
-  tic_web    = 0;
 
-  Serial.println("setup done");
   singleGreen();
 }
 
@@ -287,10 +286,9 @@ void loop() {
   } else if (WiFi.status() == WL_CONNECTED) {
     artnet.read();
 
-    // This section gets executed at a maximum rate of around 100Hz (10/1000ms)
+    // Max rate ~ 100Hz (10/1000ms)
     if ((millis() - tic_loop) >= 10) {
       if (config.mode >= 0 && config.mode < (signed)sizeof(mode)) {
-        // Call the function corresponding to the current mode
         (*mode[config.mode]) (global.universe, global.length, global.sequence, global.data);
       }
 
@@ -298,11 +296,13 @@ void loop() {
       frameCounter++;
     }
 
+    // Max rate ~ 1Hz (1000/1000ms)
     if ((millis() - tic_fps) >= 1000 && frameCounter >= 100) {
       fps = 1000 * frameCounter / (millis() - tic_fps);
       frameCounter = 0;
+      pps = 1000 * packetCounterPPS / (millis() - tic_fps);
+      packetCounterPPS = 0;
       tic_fps = millis();
     }
   }
-  delay(1);
 }

@@ -34,7 +34,7 @@
           <small>Uptime</small><br>{{status.uptime | seconds}}
         </div>
         <div>
-          <small>DMX packets</small><br>{{status.packets | number}}
+          <small>DMX packets</small><br>{{status.packets | number}} <small>({{status.pps}} PPS)</small>
         </div>
         <div>
           <small>FPS</small><br>{{status.fps}}
