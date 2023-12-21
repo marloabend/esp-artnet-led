@@ -1,0 +1,90 @@
+/*!
+ * Customized Pico CSS v1.5.10 (https://picocss.com)
+ */
+
+// Config
+$enable-responsive-spacings: false; // Disable responsive spacings
+$enable-responsive-typography: false; // Disable responsive typography > fixed root element size
+// $enable-transitions: false; // Disable transitions
+$enable-important: false; // Disable overriding with !important
+
+@import '@picocss/pico/scss/variables';
+
+// Theming
+@import '@picocss/pico/scss/themes/default/colors';
+@import '@picocss/pico/scss/themes/default/styles';
+@import '@picocss/pico/scss/themes/default/dark';
+:root {
+  @include dark;
+}
+
+// Accent-color
+progress,
+[type='checkbox'],
+[type='radio'],
+[type='range'] {
+  accent-color: var(--primary);
+}
+
+// Layout
+@import '@picocss/pico/scss/layout/document'; // html
+@import '@picocss/pico/scss/layout/sectioning'; // body, header, main, footer
+
+// Container
+.container {
+  width: 100%;
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: var(--spacing);
+  padding-left: var(--spacing);
+
+  @if map-get($breakpoints, 'sm') {
+    @media (min-width: map-get($breakpoints, 'sm')) {
+      max-width: map-get($viewports, 'sm');
+      padding-right: 0;
+      padding-left: 0;
+    }
+  }
+}
+
+@import '@picocss/pico/scss/layout/section'; // section
+
+// Grid
+.grid {
+  grid-column-gap: var(--grid-spacing-horizontal);
+  grid-row-gap: var(--grid-spacing-vertical);
+  display: grid;
+  grid-template-columns: 1fr;
+  margin: 0;
+
+  @if map-get($breakpoints, 'sm') {
+    @media (min-width: map-get($breakpoints, 'sm')) {
+      grid-template-columns: repeat(auto-fit, minmax(0%, 1fr));
+    }
+  }
+
+  & > * {
+    min-width: 0; // HACK for childs in overflow
+  }
+}
+
+// Content
+@import '@picocss/pico/scss/content/typography'; // a, headings, p, ul, blockquote, ...
+@import '@picocss/pico/scss/content/button'; // button, a[role=button], type=button, type=submit ...
+@import '@picocss/pico/scss/content/form'; // input, select, textarea, label, fieldset, legend
+@import '@picocss/pico/scss/content/form-checkbox-radio'; // type=checkbox, type=radio, role=switch
+@import '@picocss/pico/scss/content/form-alt-input-types'; // type=color, type=date, type=file, type=search, ...
+// @import '@picocss/pico/scss/content/table'; // table, tr, td, ...
+
+// Components
+@import '@picocss/pico/scss/components/accordion'; // details, summary
+@import '@picocss/pico/scss/components/card'; // article
+// @import '@picocss/pico/scss/components/progress'; // progress
+
+// Utilities
+// @import '@picocss/pico/scss/utilities/loading'; // aria-busy=true
+
+// Custom Utilities
+.mb-0 {
+  margin-bottom: 0;
+}

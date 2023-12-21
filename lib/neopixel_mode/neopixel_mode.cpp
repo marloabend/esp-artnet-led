@@ -28,8 +28,8 @@ int gamma_l[] = {
   215, 218, 220, 223, 225, 228, 231, 233, 236, 239, 241, 244, 247, 249, 252, 255
 };
 
-#define RGB  (config.leds==3 || (config.leds==4 && !config.white))
-#define RGBW (                  (config.leds==4 &&  config.white))
+#define RGB  (config.colorMapping.length() == 3 || (config.colorMapping.length() == 4 && !config.white))
+#define RGBW (                                     (config.colorMapping.length() == 4 &&  config.white))
 
 /*
   mode 0: individual pixel control

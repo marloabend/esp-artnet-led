@@ -1,0 +1,121 @@
+<main class="container">
+  <article>
+    <header>
+      <div>
+        <strong>Art-Net LED Driver</strong>
+      </div>
+      <ins *ngIf="healthy">Connected</ins>
+      <del *ngIf="!healthy">Disconnected</del>
+    </header>
+    <section>
+      <form class="mb-0" [formGroup]="modeForm">
+        <select class="mb-0" formControlName="mode">
+          <option *ngFor="let mode of modeList" [value]="mode.value">{{mode.name}}</option>
+        </select>
+      </form>
+    </section>
+    <details>
+      <summary>Art-Net</summary>
+      <form class="mb-0" [formGroup]="artnetForm" (ngSubmit)="onSubmitChannel()">
+        <label for="universe">Universe</label>
+        <input type="number" id="universe" formControlName="universe" min="0" max="32768">
+        <label for="offset">Offset</label>
+        <app-dmx-channel id="offset" formControlName="offset"></app-dmx-channel>
+        <button class="mb-0" type="submit" [disabled]="!artnetForm.valid">Update</button>
+      </form>
+    </details>
+    <details>
+      <summary>Status</summary>
+      <ng-template #noStatus>
+        <small>No status received</small>
+      </ng-template>
+      <div class="grid" *ngIf="deviceStatus$ | async as status else noStatus">
+        <div>
+          <small>Uptime</small><br>{{status.uptime | seconds}}
+        </div>
+        <div>
+          <small>DMX packets</small><br>{{status.packets | number}} <small>({{status.pps}} PPS)</small>
+        </div>
+        <div>
+          <small>FPS</small><br>{{status.fps}}
+        </div>
+      </div>
+    </details>
+    <details>
+      <summary>Device config</summary>
+      <form [formGroup]="configForm" (ngSubmit)="onSubmitConfig()">
+        <section>
+          <div class="grid">
+            <div>
+              <label for="pixels">Pixel count</label>
+              <input type="number" id="pixels" formControlName="pixels">
+            </div>
+            <div>
+              <div>
+                <label for="colorMapping">Color mapping</label>
+                <select id="colorMapping" formControlName="colorMapping">
+                  <option *ngFor="let mapping of colorMapping" [value]="mapping">{{mapping}}</option>
+                </select>
+              </div>
+              <fieldset>
+                <label for="white">
+                  <input type="checkbox" id="white" formControlName="white"> White channel
+                </label>
+                <label for="hsv">
+                  <input type="checkbox" id="hsv" formControlName="hsv"> HSV
+                </label>
+              </fieldset>
+            </div>
+          </div>
+          <div class="grid">
+            <div>
+              <label for="speed">Speed</label>
+              <input type="number" id="speed" formControlName="speed">
+            </div>
+            <div>
+              <label for="split">Split</label>
+              <input type="number" id="split" formControlName="split">
+            </div>
+          </div>
+          <div>
+            <label for="brightness">Brightness</label>
+            <input type="range" id="brightness" formControlName="brightness" min="0" max="255">
+          </div>
+          <fieldset>
+            <label for="reverse">
+              <input type="checkbox" id="reverse" formControlName="reverse"> Reverse
+            </label>
+          </fieldset>
+        </section>
+        <button type="submit" [disabled]="!configForm.valid">Save</button>
+      </form>
+    </details>
+    <details>
+      <summary>Firmware update</summary>
+      <form method="dialog"> <!-- method='POST' action='/update' enctype='multipart/form-data' -->
+        <div class="field">
+          <input type='file' name='update'>
+        </div>
+        <div class="field">
+          <button type="submit">Update</button>
+        </div>
+      </form>
+    </details>
+    <details>
+      <summary>Maintenance</summary>
+      <section class="grid">
+        <button (click)="onReconnect()">Reconnect</button>
+        <button (click)="onReboot()">Restart</button>
+        <button (click)="onReset()">Reset</button>
+      </section>
+    </details>
+    <footer>
+      <div *ngIf="deviceInfo$ | async as device">
+        <small>Chip ID: {{device.chipId}}</small><br>
+        <small>Firmware: {{device.version}}</small><br>
+        <small>MAC address: {{device.mac}}</small><br>
+        <small>IP address: {{device.ip}}</small><br>
+      </div>
+    </footer>
+  </article>
+</main>

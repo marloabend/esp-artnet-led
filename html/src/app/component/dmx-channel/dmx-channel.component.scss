@@ -1,0 +1,91 @@
+.dmx-channel {
+  > .decimal-input {
+    position: relative;
+
+    > input[type='number'] {
+      text-align: center;
+      font-size: calc(var(--font-size) * 1.5);
+
+      // Chrome, Safari, Edge, Opera
+      &::-webkit-outer-spin-button,
+      &::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      // Firefox
+      -moz-appearance: textfield;
+    }
+
+    > button {
+      position: absolute;
+      top: calc(var(--form-element-spacing-vertical) / 2);
+      width: unset;
+      padding: calc(var(--form-element-spacing-vertical) / 2) var(--form-element-spacing-horizontal);
+
+      &#decrease {
+        left: calc(var(--form-element-spacing-vertical) / 2);
+      }
+
+      &#increase {
+        right: calc(var(--form-element-spacing-vertical) / 2);
+      }
+    }
+  }
+
+  .dip-switch {
+    padding: var(--form-element-spacing-vertical) var(--form-element-spacing-horizontal);
+    border: var(--border-width) solid var(--form-element-border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--form-element-background-color);
+    color: var(--form-element-color);
+
+    &[disabled] {
+      background: var(--form-element-disabled-background-color);
+      opacity: var(--form-element-disabled-opacity);
+      pointer-events: none;
+    }
+
+    > header,
+    > .switches {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    > .switches {
+      margin-top: .5rem;
+
+      > .switch-col {
+        text-align: center;
+        flex-grow: 1;
+        max-width: calc(var(--form-element-spacing-vertical) * 2);
+
+        > .switch {
+          position: relative;
+          width: 100%;
+          height: calc(var(--form-element-spacing-vertical) * 4);
+          margin-bottom: .25rem;
+          border: var(--border-width) solid var(--form-element-border-color);
+          border-radius: var(--border-radius);
+          cursor: pointer;
+
+          > button.knob {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: calc(var(--form-element-spacing-vertical) * 1.75);
+            margin-bottom: 0;
+            padding: 0;
+            transition: all var(--transition);
+
+            &.on {
+              bottom: calc(var(--form-element-spacing-vertical) * 2.25 - var(--border-width) * 2);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
