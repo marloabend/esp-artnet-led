@@ -1,8 +1,11 @@
 #include "main.h"
 
 Config config;
-ESP8266WebServer server(80);
+AsyncWebServer server(80);
+DNSServer dns;
+
 const char* host = "ARTNET";
+const char* password = "12345678";
 const char* version = __DATE__ " / " __TIME__;
 float temperature = 0, fps = 0;
 
@@ -79,9 +82,12 @@ void setup() {
   global.length = 512;
   global.data = (uint8_t *)malloc(512);
 
-  SPIFFS.begin();
+  if (!LittleFS.begin()) {
+    Serial.println("An Error has occurred while mounting LittleFS");
+    return;
+  }
+  
   strip.begin();
-
   initialConfig();
 
   if (loadConfig()) {
@@ -97,132 +103,114 @@ void setup() {
     delay(1000);
   }
 
-  WiFiManager wifiManager;
-  // wifiManager.resetSettings();
-  wifiManager.setAPStaticIPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
-  wifiManager.autoConnect(host);
+  AsyncWiFiManager wifiManager(&server, &dns);
+  wifiManager.autoConnect(host, password);
   Serial.println("connected");
 
   if (WiFi.status() == WL_CONNECTED)
     singleGreen();
 
-  // this serves all URIs that can be resolved to a file on the SPIFFS filesystem
-  server.onNotFound(handleNotFound);
-
-  server.on("/", HTTP_GET, []() {
-    tic_web = millis();
-    handleRedirect("/index");
+  // this serves all URIs that can be resolved to a file on the LittleFS filesystem
+  server.onNotFound([](AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/index.html");
   });
 
-  server.on("/index", HTTP_GET, []() {
-    tic_web = millis();
-    handleStaticFile("/index.html");
-  });
+  server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 
-  server.on("/version", HTTP_GET, []() {
-    Serial.println("version");
-    server.send(200, "text/plain", version);
+  server.on("/discovery", HTTP_GET, [](AsyncWebServerRequest *request) {
+    tic_web = millis();
+    StaticJsonDocument<300> data;
+    data["chipId"] = ESP.getFlashChipId();
+    data["version"] = version;
+    data["mac"] = WiFi.macAddress();
+    data["ip"] = WiFi.localIP();
+    String json;
+    serializeJson(data, json);
+    request->send(200, "application/json", json);
   });
   
-  server.on("/defaults", HTTP_GET, []() {
+  server.on("/defaults", HTTP_GET, [](AsyncWebServerRequest *request) {
     tic_web = millis();
     Serial.println("handleDefaults");
-    handleStaticFile("/reload_success.html");
+    request->send(200, "text/plain", "");
     delay(2000);
     singleRed();
     initialConfig();
     saveConfig();
-    WiFiManager wifiManager;
+    AsyncWiFiManager wifiManager(&server, &dns);
     wifiManager.resetSettings();
     ESP.restart();
   });
 
-  server.on("/reconnect", HTTP_GET, []() {
+  server.on("/reconnect", HTTP_GET, [](AsyncWebServerRequest *request) {
     tic_web = millis();
     Serial.println("handleReconnect");
-    handleStaticFile("/reload_success.html");
+    request->send(200, "text/plain", "");
     delay(2000);
     singleYellow();
-    WiFiManager wifiManager;
-    wifiManager.setAPStaticIPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
-    wifiManager.startConfigPortal(host);
+    AsyncWiFiManager wifiManager(&server, &dns);
+    wifiManager.startConfigPortal(host, password);
     Serial.println("connected");
     if (WiFi.status() == WL_CONNECTED)
       singleGreen();
   });
 
-  server.on("/reset", HTTP_GET, []() {
+  server.on("/reset", HTTP_GET, [](AsyncWebServerRequest *request) {
     tic_web = millis();
     Serial.println("handleReset");
-    handleStaticFile("/reload_success.html");
+    request->send(200, "text/plain", "");
     delay(2000);
     singleRed();
     ESP.restart();
   });
 
-  server.on("/monitor", HTTP_GET, [] {
+  server.on("/monitor", HTTP_GET, [](AsyncWebServerRequest *request) {
+    Serial.println("HTTP_GET /monitor");
     tic_web = millis();
-    handleStaticFile("/monitor.html");
+    StaticJsonDocument<300> data;
+    data["uptime"]  = long(millis() / 1000);
+    data["packets"] = packetCounter;
+    data["fps"]     = fps;
+    data["heap"]    = ESP.getFreeHeap();
+    String json;
+    serializeJson(data, json);
+    request->send(200, "application/json", json);
   });
 
-  server.on("/hello", HTTP_GET, [] {
+  server.on("/dir", HTTP_GET, [](AsyncWebServerRequest *request) {
     tic_web = millis();
-    handleStaticFile("/hello.html");
+    Serial.println("handleDirList");
+    handleDirList(request);
   });
 
-  server.on("/settings", HTTP_GET, [] {
-    tic_web = millis();
-    handleStaticFile("/settings.html");
-  });
-
-  server.on("/dir", HTTP_GET, [] {
-    tic_web = millis();
-    handleDirList();
-  });
-
-  server.on("/json", HTTP_PUT, [] {
-    Serial.println("HTTP_PUT /json");
-    tic_web = millis();
-    handleJSON();
-  });
-
-  server.on("/json", HTTP_POST, [] {
+  AsyncCallbackJsonWebHandler* jsonHandler = new AsyncCallbackJsonWebHandler("/json", [](AsyncWebServerRequest *request, JsonVariant &json) {
     Serial.println("HTTP_POST /json");
     tic_web = millis();
-    handleJSON();
+    handleJSON(request, json);
   });
+  server.addHandler(jsonHandler);
 
-  server.on("/json", HTTP_GET, [] {
+  server.on("/json", HTTP_GET, [](AsyncWebServerRequest *request) {
     Serial.println("HTTP_GET /json");
     tic_web = millis();
-    StaticJsonBuffer<300> jsonBuffer;
-    JsonObject& root = jsonBuffer.createObject();
-    CONFIG_TO_JSON(universe, "universe");
-    CONFIG_TO_JSON(offset, "offset");
-    CONFIG_TO_JSON(pixels, "pixels");
-    CONFIG_TO_JSON(leds, "leds");
-    CONFIG_TO_JSON(white, "white");
-    CONFIG_TO_JSON(brightness, "brightness");
-    CONFIG_TO_JSON(hsv, "hsv");
-    CONFIG_TO_JSON(mode, "mode");
-    CONFIG_TO_JSON(reverse, "reverse");
-    CONFIG_TO_JSON(speed, "speed");
-    CONFIG_TO_JSON(split, "split");
-    root["version"] = version;
-    root["uptime"]  = long(millis() / 1000);
-    root["packets"] = packetCounter;
-    root["fps"]     = fps;
+    StaticJsonDocument<300> data;
+    data["universe"] = config.universe;
+    data["offset"] = config.offset;
+    data["pixels"] = config.pixels;
+    data["leds"] = config.leds;
+    data["white"] = config.white;
+    data["brightness"] = config.brightness;
+    data["hsv"] = config.hsv;
+    data["mode"] = config.mode;
+    data["reverse"] = config.reverse;
+    data["speed"] = config.speed;
+    data["split"] = config.split;
     String str;
-    root.printTo(str);
-    server.send(200, "application/json", str);
+    serializeJson(data, str);
+    request->send(200, "application/json", str);
   });
 
-  server.on("/update", HTTP_GET, [] {
-    tic_web = millis();
-    handleStaticFile("/update.html");
-  });
-
-  server.on("/update", HTTP_POST, handleUpdate1, handleUpdate2);
+  // TODO: server.on("/update", HTTP_POST, handleUpdate1, handleUpdate2);
 
   // start the web server
   server.begin();
@@ -244,8 +232,6 @@ void setup() {
 } // setup
 
 void loop() {
-  server.handleClient();
-
   if (WiFi.status() != WL_CONNECTED) {
     singleRed();
   }

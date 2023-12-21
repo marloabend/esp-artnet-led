@@ -1,0 +1,107 @@
+<main class="container">
+  <article>
+    <header>
+      <div>
+        <strong>ArtNet LED Driver</strong>
+      </div>
+      <ins *ngIf="healthy">Connected</ins>
+      <del *ngIf="!healthy">Disconnected</del>
+    </header>
+    <details>
+      <summary>Status</summary>
+      <ng-template #noStatus>
+        <small>No status received</small>
+      </ng-template>
+      <div class="grid" *ngIf="deviceStatus$ | async as status else noStatus">
+        <div>
+          <small>Uptime</small><br>{{status.uptime | seconds}}
+        </div>
+        <div>
+          <small>DMX packets</small><br>{{status.packets | number}}
+        </div>
+        <div>
+          <small>FPS</small><br>{{status.fps}}
+        </div>
+      </div>
+    </details>
+    <details>
+      <summary>Device config</summary>
+      <form [formGroup]="configForm" (ngSubmit)="onSubmitConfig()">
+        <section>
+          <div>
+            <label for="universe">Universe</label>
+            <input type="number" id="universe" formControlName="universe">
+          </div>
+          <div>
+            <label for="offset">Offset</label>
+            <input type="number" id="offset" formControlName="offset">
+          </div>
+          <div>
+            <label for="pixels">Pixels</label>
+            <input type="number" id="pixels" formControlName="pixels">
+          </div>
+          <div>
+            <label for="leds">LEDs</label>
+            <input type="number" id="leds" formControlName="leds">
+          </div>
+          <div>
+            <label for="white">White</label>
+            <input type="number" id="white" formControlName="white">
+          </div>
+          <div>
+            <label for="brightness">Brightness</label>
+            <input type="number" id="brightness" formControlName="brightness">
+          </div>
+          <div>
+            <label for="hsv">HSV</label>
+            <input type="number" id="hsv" formControlName="hsv">
+          </div>
+          <div>
+            <label for="mode">Mode</label>
+            <input type="number" id="mode" formControlName="mode">
+          </div>
+          <div>
+            <label for="reverse">Reverse</label>
+            <input type="number" id="reverse" formControlName="reverse">
+          </div>
+          <div>
+            <label for="speed">Speed</label>
+            <input type="number" id="speed" formControlName="speed">
+          </div>
+          <div>
+            <label for="split">Split</label>
+            <input type="number" id="split" formControlName="split">
+          </div>
+        </section>
+        <button type="submit" [disabled]="!configForm.valid">Save</button>
+      </form>
+    </details>
+    <details>
+      <summary>Firmware update</summary>
+      <form method='POST' action='/update' enctype="multipart/form-data">
+        <div class="field">
+          <input type='file' name='update'>
+        </div>
+        <div class="field">
+          <button type="submit">Update</button>
+        </div>
+      </form>
+    </details>
+    <details>
+      <summary>Maintenance</summary>
+      <section class="grid">
+        <button (click)="onReconnect()">Reconnect</button>
+        <button (click)="onReboot()">Restart</button>
+        <button (click)="onReset()">Reset</button>
+      </section>
+    </details>
+    <footer>
+      <div *ngIf="deviceInfo$ | async as device">
+        <small>Chip ID: {{device.chipId}}</small><br>
+        <small>Firmware: {{device.version}}</small><br>
+        <small>MAC address: {{device.mac}}</small><br>
+        <small>IP address: {{device.ip}}</small><br>
+      </div>
+    </footer>
+  </article>
+</main>

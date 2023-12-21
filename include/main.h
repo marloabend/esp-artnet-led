@@ -6,14 +6,17 @@
   https://github.com/adafruit/Adafruit_NeoPixel
 */
 
-#include <ESP8266WiFi.h>         // https://github.com/esp8266/Arduino
-#include <ESP8266WebServer.h>
+#include <ArduinoJson.h>
+#include <AsyncJson.h>
+#include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
-#include <WiFiManager.h>         // https://github.com/tzapu/WiFiManager
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <ESPAsyncWiFiManager.h>
 #include <WiFiClient.h>
-#include <ArtnetWifi.h>          // https://github.com/rstephan/ArtnetWifi 
+#include <ArtnetWifi.h>
 #include <Adafruit_NeoPixel.h>
-#include <FS.h>
+#include <LittleFS.h>
 
 #include "setup_ota.h"
 #include "neopixel_mode.h"
