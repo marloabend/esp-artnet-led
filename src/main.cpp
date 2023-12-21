@@ -44,10 +44,12 @@ void onDmxPacket(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t *
   // Copy the data from the UDP packet over to the global universe buffer
   global.universe = universe;
   global.sequence = sequence;
-  if (length < 512)
+  if (length < 512) {
     global.length = length;
-  for (int i = 0; i < global.length; i++)
+  }
+  for (int i = 0; i < global.length; i++) {
     global.data[i] = data[i];
+  }
 }
 
 void updateNeopixelStrip() {
@@ -251,6 +253,10 @@ void setup() {
     Serial.println("HTTP_POST /config");
     tic_web = millis();
     handleJSON(request, json);
+
+    if (saveConfig() && loadConfig()) {
+      updateNeopixelStrip();
+    }
   });
   server.addHandler(configHandler);
 
@@ -280,19 +286,14 @@ void loop() {
     singleRed();
   } else if (WiFi.status() == WL_CONNECTED) {
     artnet.read();
-    
-    // This section gets executed at a maximum rate of around 1Hz
-    if ((millis() - tic_loop) >= 1000) {
-      updateNeopixelStrip();
-    }
 
     // This section gets executed at a maximum rate of around 100Hz (10/1000ms)
     if ((millis() - tic_loop) >= 10) {
-      if (config.mode >= 0 && config.mode < sizeof(mode) / 4) {
+      if (config.mode >= 0 && config.mode < (signed)sizeof(mode)) {
         // Call the function corresponding to the current mode
         (*mode[config.mode]) (global.universe, global.length, global.sequence, global.data);
       }
-      
+
       tic_loop = millis();
       frameCounter++;
     }

@@ -190,5 +190,4 @@ void handleJSON(AsyncWebServerRequest *request, JsonVariant &json) {
     KEYVAL_TO_CONFIG(split, "split", request);
     request->send(200, "text/plain", "");
   }
-  saveConfig();
 }
