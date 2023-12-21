@@ -4,9 +4,7 @@ extern AsyncWebServer server;
 extern Config config;
 extern int packetCounter;
 
-/***************************************************************************/
-
-bool initialConfig() {
+bool defaultConfig() {
   config.universe = 1;
   config.offset = 0;
   config.pixels = 12;
@@ -94,8 +92,6 @@ bool saveConfig() {
   }
 }
 
-/***************************************************************************/
-
 /*
 void handleUpdate1() {
   server.sendHeader("Connection", "close");
@@ -158,9 +154,9 @@ void handleJSON(AsyncWebServerRequest *request, JsonVariant &json) {
   }
   Serial.println(message);
 
-  // this gets called in response to either a PUT or a POST
+  // This gets called in response to either a PUT or a POST
   if (request->hasArg("plain")) {
-    // parse it as JSON object
+    // Parse it as JSON object
     StaticJsonDocument<300> data;
     data = json.as<JsonObject>();
     JsonObject jsonObj = json.as<JsonObject>();
@@ -180,7 +176,7 @@ void handleJSON(AsyncWebServerRequest *request, JsonVariant &json) {
     request->send(200, "application/json", serializedJson);
   }
   else {
-    // parse it as key1=val1&key2=val2&key3=val3
+    // Parse query parameters
     KEYVAL_TO_CONFIG(universe, "universe", request);
     KEYVAL_TO_CONFIG(offset, "offset", request);
     KEYVAL_TO_CONFIG(pixels, "pixels", request);

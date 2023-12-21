@@ -20,3 +20,5 @@
 
 #include "setup_ota.h"
 #include "neopixel_mode.h"
+
+#define LED_PIN 2

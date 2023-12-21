@@ -2,7 +2,7 @@
   <article>
     <header>
       <div>
-        <strong>ArtNet LED Driver</strong>
+        <strong>Art-Net LED Driver</strong>
       </div>
       <ins *ngIf="healthy">Connected</ins>
       <del *ngIf="!healthy">Disconnected</del>
@@ -15,7 +15,7 @@
       </form>
     </section>
     <details>
-      <summary>Artnet</summary>
+      <summary>Art-Net</summary>
       <form class="mb-0" [formGroup]="artnetForm" (ngSubmit)="onSubmitChannel()">
         <label for="universe">Universe</label>
         <input type="number" id="universe" formControlName="universe" min="0" max="32768">

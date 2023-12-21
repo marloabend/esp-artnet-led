@@ -4,14 +4,14 @@ Config config;
 AsyncWebServer server(80);
 DNSServer dns;
 
-const char* host = "ARTNET";
+const char* host = "Art-Net LED";
 const char* password = "12345678";
 const char* version = __DATE__ " / " __TIME__;
-float temperature = 0, fps = 0;
+
+float fps = 0;
 
 // Neopixel settings
-const byte dataPin = 2;
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, dataPin, NEO_GRBW + NEO_KHZ800); // start with one pixel
+Adafruit_NeoPixel strip = Adafruit_NeoPixel();
 
 // Artnet settings
 ArtnetWifi artnet;
@@ -25,38 +25,30 @@ struct {
   uint8_t *data;
 } global;
 
-// use an array of function pointers to jump to the desired mode
+// Use an array of function pointers to jump to the desired mode
 void (*mode[]) (uint16_t, uint16_t, uint8_t, uint8_t *) {
-  mode0, mode1, mode2, mode3, mode4, mode5, mode6, mode7, mode8, mode9, mode10, mode11, mode12, mode13, mode14, mode15, mode16
+  mode0, mode1, mode2, mode3, mode4, mode5, mode6, mode7, mode8, mode9, mode10, mode11, mode12, mode13, mode14, mode15
 };
 
-// keep the timing of the function calls
-long tic_loop = 0, tic_fps = 0, tic_packet = 0, tic_web = 0;
+// Keep the timing of the function calls
+long tic_loop = 0;
+long tic_fps = 0;
+long tic_packet = 0;
+long tic_web = 0;
 long frameCounter = 0;
 
-//this will be called for each UDP packet received
-void onDmxPacket(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t * data) {
-  // print some feedback
-  Serial.print("packetCounter = ");
-  Serial.print(packetCounter++);
-  if ((millis() - tic_fps) > 1000 && frameCounter > 100) {
-    // don't estimate the FPS too quickly
-    fps = 1000 * frameCounter / (millis() - tic_fps);
-    tic_fps = millis();
-    frameCounter = 0;
-    Serial.print(",  FPS = ");
-    Serial.print(fps);
-  }
-  Serial.println();
+// This will be called for each UDP packet received
+void onDmxPacket(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t * data) {  
+  packetCounter++;
 
-  // copy the data from the UDP packet over to the global universe buffer
+  // Copy the data from the UDP packet over to the global universe buffer
   global.universe = universe;
   global.sequence = sequence;
   if (length < 512)
     global.length = length;
   for (int i = 0; i < global.length; i++)
     global.data[i] = data[i];
-} // onDmxpacket
+}
 
 void updateNeopixelStrip() {
   strip.updateType(strip.str2order(config.colorMapping.c_str()) + NEO_KHZ800);
@@ -69,7 +61,7 @@ void setup() {
   while (!Serial) {
     ;
   }
-  Serial.println("setup starting");
+  Serial.println();
 
   global.universe = 0;
   global.sequence = 0;
@@ -80,21 +72,17 @@ void setup() {
     Serial.println("An Error has occurred while mounting LittleFS");
     return;
   }
-  
+
+  strip.setPin(LED_PIN);
+  defaultConfig();
+  updateNeopixelStrip();
   strip.begin();
-  initialConfig();
 
   if (loadConfig()) {
     updateNeopixelStrip();
-    strip.setBrightness(255);
     singleYellow();
-    delay(1000);
-  }
-  else {
-    updateNeopixelStrip();
-    strip.setBrightness(255);
+  } else {
     singleRed();
-    delay(1000);
   }
 
   AsyncWiFiManager wifiManager(&server, &dns);
@@ -104,12 +92,12 @@ void setup() {
   if (WiFi.status() == WL_CONNECTED)
     singleGreen();
 
-  // this serves all URIs that can be resolved to a file on the LittleFS filesystem
+  // Webserver
+  server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
+
   server.onNotFound([](AsyncWebServerRequest *request) {
     request->redirect("/");
   });
-
-  server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 
   server.on("/discovery", HTTP_GET, [](AsyncWebServerRequest *request) {
     tic_web = millis();
@@ -118,18 +106,20 @@ void setup() {
     data["version"] = version;
     data["mac"] = WiFi.macAddress();
     data["ip"] = WiFi.localIP();
+
     String json;
     serializeJson(data, json);
+
     request->send(200, "application/json", json);
   });
-  
+
   server.on("/defaults", HTTP_GET, [](AsyncWebServerRequest *request) {
     tic_web = millis();
-    Serial.println("handleDefaults");
+    Serial.println("GET /defaults");
     request->send(200, "text/plain", "");
     delay(2000);
     singleRed();
-    initialConfig();
+    defaultConfig();
     saveConfig();
     AsyncWiFiManager wifiManager(&server, &dns);
     wifiManager.resetSettings();
@@ -138,15 +128,16 @@ void setup() {
 
   server.on("/reconnect", HTTP_GET, [](AsyncWebServerRequest *request) {
     tic_web = millis();
-    Serial.println("handleReconnect");
+    Serial.println("GET /reconnect");
     request->send(200, "text/plain", "");
     delay(2000);
     singleYellow();
     AsyncWiFiManager wifiManager(&server, &dns);
     wifiManager.startConfigPortal(host, password);
     Serial.println("connected");
-    if (WiFi.status() == WL_CONNECTED)
+    if (WiFi.status() == WL_CONNECTED) {
       singleGreen();
+    }
   });
 
   server.on("/reset", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -166,8 +157,10 @@ void setup() {
     data["packets"] = packetCounter;
     data["fps"]     = fps;
     data["heap"]    = ESP.getFreeHeap();
+
     String json;
     serializeJson(data, json);
+
     request->send(200, "application/json", json);
   });
 
@@ -176,7 +169,6 @@ void setup() {
     Serial.println("handleDirList");
     handleDirList(request);
   });
-
 
   server.on("/channel", HTTP_GET, [](AsyncWebServerRequest *request) {
     StaticJsonDocument<300> data;
@@ -211,9 +203,11 @@ void setup() {
     data["reverse"] = config.reverse;
     data["speed"] = config.speed;
     data["split"] = config.split;
-    String str;
-    serializeJson(data, str);
-    request->send(200, "application/json", str);
+
+    String json;
+    serializeJson(data, json);
+
+    request->send(200, "application/json", json);
   });
 
   AsyncCallbackJsonWebHandler* channelHandler = new AsyncCallbackJsonWebHandler("/channel", [](AsyncWebServerRequest *request, JsonVariant &json) {
@@ -260,51 +254,54 @@ void setup() {
   });
   server.addHandler(configHandler);
 
-  // TODO: server.on("/update", HTTP_POST, handleUpdate1, handleUpdate2);
+  // server.on("/update", HTTP_POST, handleUpdate1, handleUpdate2);
 
-  // start the web server
   server.begin();
 
-  // announce the hostname and web server through zeroconf
+  // Announce the hostname and web server through zeroconf
   MDNS.begin(host);
   MDNS.addService("http", "tcp", 80);
 
   artnet.begin();
   artnet.setArtDmxCallback(onDmxPacket);
 
-  // initialize all timers
+  // Initialize all timers
   tic_loop   = millis();
   tic_packet = millis();
   tic_fps    = millis();
   tic_web    = 0;
 
   Serial.println("setup done");
-} // setup
+  singleGreen();
+}
 
 void loop() {
   if (WiFi.status() != WL_CONNECTED) {
     singleRed();
-  }
-  else if ((millis() - tic_web) < 5000) {
-    singleBlue();
-  }
-  else  {
+  } else if (WiFi.status() == WL_CONNECTED) {
     artnet.read();
-
-    // this section gets executed at a maximum rate of around 1Hz
-    if ((millis() - tic_loop) > 999)
+    
+    // This section gets executed at a maximum rate of around 1Hz
+    if ((millis() - tic_loop) >= 1000) {
       updateNeopixelStrip();
+    }
 
-    // this section gets executed at a maximum rate of around 100Hz
-    if ((millis() - tic_loop) > 9) {
-      if (config.mode >= 0 && config.mode < (sizeof(mode) / 4)) {
-        // call the function corresponding to the current mode
+    // This section gets executed at a maximum rate of around 100Hz (10/1000ms)
+    if ((millis() - tic_loop) >= 10) {
+      if (config.mode >= 0 && config.mode < sizeof(mode) / 4) {
+        // Call the function corresponding to the current mode
         (*mode[config.mode]) (global.universe, global.length, global.sequence, global.data);
-        tic_loop = millis();
-        frameCounter++;
       }
+      
+      tic_loop = millis();
+      frameCounter++;
+    }
+
+    if ((millis() - tic_fps) >= 1000 && frameCounter >= 100) {
+      fps = 1000 * frameCounter / (millis() - tic_fps);
+      frameCounter = 0;
+      tic_fps = millis();
     }
   }
-
   delay(1);
-} // loop
+}

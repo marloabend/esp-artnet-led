@@ -8,11 +8,9 @@
 #include <WiFiUdp.h>
 #include <LittleFS.h>
 
-#define JSON_TO_CONFIG(x, y)   { if (root.containsKey(y)) { config.x = root[y]; } }
-#define CONFIG_TO_JSON(x, y)   { root.set(y, config.x); }
 #define KEYVAL_TO_CONFIG(x, y, request) { if (request->hasArg(y))    { String str = request->arg(y); config.x = str.toInt(); } }
 
-bool initialConfig(void);
+bool defaultConfig(void);
 bool loadConfig(void);
 bool saveConfig(void);
 
