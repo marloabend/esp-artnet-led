@@ -10,12 +10,12 @@ bool initialConfig() {
   config.universe = 1;
   config.offset = 0;
   config.pixels = 12;
-  config.leds = 4;
-  config.white = 0;
+  config.colorMapping = "RGB";
+  config.white = false;
   config.brightness = 255;
-  config.hsv = 0;
+  config.hsv = false;
   config.mode = 1;
-  config.reverse = 0;
+  config.reverse = false;
   config.speed = 8;
   config.split = 1;
   return true;
@@ -50,7 +50,7 @@ bool loadConfig() {
   config.universe = root["universe"];
   config.offset = root["offset"];
   config.pixels = root["pixels"];
-  config.leds = root["leds"];
+  config.colorMapping = root["colorMapping"].as<String>();
   config.white = root["white"];
   config.brightness = root["brightness"];
   config.hsv = root["hsv"];
@@ -70,7 +70,7 @@ bool saveConfig() {
   root["universe"] = config.universe;
   root["offset"] = config.offset;
   root["pixels"] = config.pixels;
-  root["leds"] = config.leds;
+  root["colorMapping"] = config.colorMapping;
   root["white"] = config.white;
   root["brightness"] = config.brightness;
   root["hsv"] = config.hsv;
@@ -165,14 +165,11 @@ void handleJSON(AsyncWebServerRequest *request, JsonVariant &json) {
     data = json.as<JsonObject>();
     JsonObject jsonObj = json.as<JsonObject>();
 
-    config.universe = jsonObj["universe"];
-    config.offset = jsonObj["offset"];
     config.pixels = jsonObj["pixels"];
-    config.leds = jsonObj["leds"];
+    config.colorMapping = jsonObj["colorMapping"].as<String>();
     config.white = jsonObj["white"];
     config.brightness = jsonObj["brightness"];
     config.hsv = jsonObj["hsv"];
-    config.mode = jsonObj["mode"];
     config.reverse = jsonObj["reverse"];
     config.speed = jsonObj["speed"];
     config.split = jsonObj["split"];
@@ -187,7 +184,7 @@ void handleJSON(AsyncWebServerRequest *request, JsonVariant &json) {
     KEYVAL_TO_CONFIG(universe, "universe", request);
     KEYVAL_TO_CONFIG(offset, "offset", request);
     KEYVAL_TO_CONFIG(pixels, "pixels", request);
-    KEYVAL_TO_CONFIG(leds, "leds", request);
+    KEYVAL_TO_CONFIG(colorMapping, "colorMapping", request);
     KEYVAL_TO_CONFIG(white, "white", request);
     KEYVAL_TO_CONFIG(brightness, "brightness", request);
     KEYVAL_TO_CONFIG(hsv, "hsv", request);

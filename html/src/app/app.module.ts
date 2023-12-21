@@ -4,6 +4,7 @@ import {AppComponent} from './app.component';
 import {HttpClientModule} from '@angular/common/http';
 import {ReactiveFormsModule} from '@angular/forms';
 import {DeviceService} from './service/device.service';
+import {DmxChannelComponent} from './component/dmx-channel/dmx-channel.component';
 import {SecondsPipe} from './pipe/seconds.pipe';
 
 @NgModule({
@@ -15,6 +16,7 @@ import {SecondsPipe} from './pipe/seconds.pipe';
   ],
   declarations: [
     AppComponent,
+    DmxChannelComponent,
   ],
   providers: [
     DeviceService,

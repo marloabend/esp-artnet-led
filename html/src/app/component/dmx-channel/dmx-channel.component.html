@@ -1,0 +1,21 @@
+<form class="dmx-channel" [formGroup]="form">
+  <div class="decimal-input">
+    <input type="number" min="0" max="512" formControlName="channel">
+    <button id="decrease" [disabled]="disabled" (click)="onDecrease()">-</button>
+    <button id="increase" [disabled]="disabled" (click)="onIncrease()">+</button>
+  </div>
+  <fieldset class="dip-switch" [disabled]="disabled">
+    <header>
+      <small>ON</small>
+      <small>{{binary.slice().reverse().join('')}}</small>
+    </header>
+    <div class="switches" *ngIf="binary?.length === 9">
+      <div class="switch-col" *ngFor="let i of [0, 1, 2, 3, 4, 5, 6, 7, 8]">
+        <div class="switch" (click)="onDipSwitch(i)">
+          <button class="knob" [class.on]="binary[i] === 1"></button>
+        </div>
+        <small>{{i + 1}}</small>
+      </div>
+    </div>
+  </fieldset>
+</form>

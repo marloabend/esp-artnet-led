@@ -25,12 +25,12 @@ struct Config {
   int universe;
   int offset;
   int pixels;
-  int leds;
-  int white;
+  String colorMapping;
+  bool white; // deprecated
   int brightness;
-  int hsv;
+  bool hsv;
   int mode;
-  int reverse;
+  bool reverse;
   int speed;
   int split;
 };

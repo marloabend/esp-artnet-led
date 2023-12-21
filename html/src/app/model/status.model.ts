@@ -1,6 +1,6 @@
 export interface Status {
   uptime: number
-  packets: number;
   fps: number;
-  heap: number;
+  packets: number;
+  version: string;
 }

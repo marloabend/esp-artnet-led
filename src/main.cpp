@@ -58,16 +58,10 @@ void onDmxPacket(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t *
     global.data[i] = data[i];
 } // onDmxpacket
 
-void updateNeopixelStrip(void) {
-  // update the neopixel strip configuration
+void updateNeopixelStrip() {
+  strip.updateType(strip.str2order(config.colorMapping.c_str()) + NEO_KHZ800);
   strip.updateLength(config.pixels);
   strip.setBrightness(config.brightness);
-  if (config.leds == 3)
-    strip.updateType(NEO_GRB + NEO_KHZ800);
-  else if (config.leds == 4 && config.white)
-    strip.updateType(NEO_GRBW + NEO_KHZ800);
-  else if (config.leds == 4 && !config.white)
-    strip.updateType(NEO_GRBW + NEO_KHZ800);
 }
 
 void setup() {
@@ -112,7 +106,7 @@ void setup() {
 
   // this serves all URIs that can be resolved to a file on the LittleFS filesystem
   server.onNotFound([](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/index.html");
+    request->redirect("/");
   });
 
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
@@ -164,7 +158,7 @@ void setup() {
     ESP.restart();
   });
 
-  server.on("/monitor", HTTP_GET, [](AsyncWebServerRequest *request) {
+  server.on("/status", HTTP_GET, [](AsyncWebServerRequest *request) {
     Serial.println("HTTP_GET /monitor");
     tic_web = millis();
     StaticJsonDocument<300> data;
@@ -183,25 +177,37 @@ void setup() {
     handleDirList(request);
   });
 
-  AsyncCallbackJsonWebHandler* jsonHandler = new AsyncCallbackJsonWebHandler("/json", [](AsyncWebServerRequest *request, JsonVariant &json) {
-    Serial.println("HTTP_POST /json");
-    tic_web = millis();
-    handleJSON(request, json);
-  });
-  server.addHandler(jsonHandler);
 
-  server.on("/json", HTTP_GET, [](AsyncWebServerRequest *request) {
-    Serial.println("HTTP_GET /json");
-    tic_web = millis();
+  server.on("/channel", HTTP_GET, [](AsyncWebServerRequest *request) {
     StaticJsonDocument<300> data;
     data["universe"] = config.universe;
     data["offset"] = config.offset;
+    
+    String json;
+    serializeJson(data, json);
+
+    request->send(200, "application/json", json);
+  });
+
+  server.on("/mode", HTTP_GET, [](AsyncWebServerRequest *request) {
+    StaticJsonDocument<300> data;
+    data["mode"] = config.mode;
+    
+    String json;
+    serializeJson(data, json);
+
+    request->send(200, "application/json", json);
+  });
+
+  server.on("/config", HTTP_GET, [](AsyncWebServerRequest *request) {
+    Serial.println("HTTP_GET /config");
+    tic_web = millis();
+    StaticJsonDocument<300> data;
     data["pixels"] = config.pixels;
-    data["leds"] = config.leds;
+    data["colorMapping"] = config.colorMapping;
     data["white"] = config.white;
     data["brightness"] = config.brightness;
     data["hsv"] = config.hsv;
-    data["mode"] = config.mode;
     data["reverse"] = config.reverse;
     data["speed"] = config.speed;
     data["split"] = config.split;
@@ -209,6 +215,50 @@ void setup() {
     serializeJson(data, str);
     request->send(200, "application/json", str);
   });
+
+  AsyncCallbackJsonWebHandler* channelHandler = new AsyncCallbackJsonWebHandler("/channel", [](AsyncWebServerRequest *request, JsonVariant &json) {
+    StaticJsonDocument<300> data;
+    data = json.as<JsonObject>();
+    JsonObject jsonObj = json.as<JsonObject>();
+
+    config.universe = jsonObj["universe"];
+    config.offset = jsonObj["offset"];
+
+    if (saveConfig() && loadConfig()) {
+      updateNeopixelStrip();
+    }
+
+    String serializedJson;
+    serializeJson(jsonObj, serializedJson);
+
+    request->send(200, "application/json", serializedJson);
+  });
+  server.addHandler(channelHandler);
+
+  AsyncCallbackJsonWebHandler* modeHandler = new AsyncCallbackJsonWebHandler("/mode", [](AsyncWebServerRequest *request, JsonVariant &json) {
+    StaticJsonDocument<300> data;
+    data = json.as<JsonObject>();
+    JsonObject jsonObj = json.as<JsonObject>();
+
+    config.mode = jsonObj["mode"];
+
+    if (saveConfig() && loadConfig()) {
+      updateNeopixelStrip();
+    }
+
+    String serializedJson;
+    serializeJson(jsonObj, serializedJson);
+
+    request->send(200, "application/json", serializedJson);
+  });
+  server.addHandler(modeHandler);
+
+  AsyncCallbackJsonWebHandler* configHandler = new AsyncCallbackJsonWebHandler("/config", [](AsyncWebServerRequest *request, JsonVariant &json) {
+    Serial.println("HTTP_POST /config");
+    tic_web = millis();
+    handleJSON(request, json);
+  });
+  server.addHandler(configHandler);
 
   // TODO: server.on("/update", HTTP_POST, handleUpdate1, handleUpdate2);
 

@@ -7,6 +7,23 @@
       <ins *ngIf="healthy">Connected</ins>
       <del *ngIf="!healthy">Disconnected</del>
     </header>
+    <section>
+      <form class="mb-0" [formGroup]="modeForm">
+        <select class="mb-0" formControlName="mode">
+          <option *ngFor="let mode of modeList" [value]="mode.value">{{mode.name}}</option>
+        </select>
+      </form>
+    </section>
+    <details>
+      <summary>Artnet</summary>
+      <form class="mb-0" [formGroup]="artnetForm" (ngSubmit)="onSubmitChannel()">
+        <label for="universe">Universe</label>
+        <input type="number" id="universe" formControlName="universe" min="0" max="32768">
+        <label for="offset">Offset</label>
+        <app-dmx-channel id="offset" formControlName="offset"></app-dmx-channel>
+        <button class="mb-0" type="submit" [disabled]="!artnetForm.valid">Update</button>
+      </form>
+    </details>
     <details>
       <summary>Status</summary>
       <ng-template #noStatus>
@@ -28,57 +45,54 @@
       <summary>Device config</summary>
       <form [formGroup]="configForm" (ngSubmit)="onSubmitConfig()">
         <section>
-          <div>
-            <label for="universe">Universe</label>
-            <input type="number" id="universe" formControlName="universe">
+          <div class="grid">
+            <div>
+              <label for="pixels">Pixel count</label>
+              <input type="number" id="pixels" formControlName="pixels">
+            </div>
+            <div>
+              <div>
+                <label for="colorMapping">Color mapping</label>
+                <select id="colorMapping" formControlName="colorMapping">
+                  <option *ngFor="let mapping of colorMapping" [value]="mapping">{{mapping}}</option>
+                </select>
+              </div>
+              <fieldset>
+                <label for="white">
+                  <input type="checkbox" id="white" formControlName="white"> White channel
+                </label>
+                <label for="hsv">
+                  <input type="checkbox" id="hsv" formControlName="hsv"> HSV
+                </label>
+              </fieldset>
+            </div>
           </div>
-          <div>
-            <label for="offset">Offset</label>
-            <input type="number" id="offset" formControlName="offset">
-          </div>
-          <div>
-            <label for="pixels">Pixels</label>
-            <input type="number" id="pixels" formControlName="pixels">
-          </div>
-          <div>
-            <label for="leds">LEDs</label>
-            <input type="number" id="leds" formControlName="leds">
-          </div>
-          <div>
-            <label for="white">White</label>
-            <input type="number" id="white" formControlName="white">
+          <div class="grid">
+            <div>
+              <label for="speed">Speed</label>
+              <input type="number" id="speed" formControlName="speed">
+            </div>
+            <div>
+              <label for="split">Split</label>
+              <input type="number" id="split" formControlName="split">
+            </div>
           </div>
           <div>
             <label for="brightness">Brightness</label>
-            <input type="number" id="brightness" formControlName="brightness">
+            <input type="range" id="brightness" formControlName="brightness" min="0" max="255">
           </div>
-          <div>
-            <label for="hsv">HSV</label>
-            <input type="number" id="hsv" formControlName="hsv">
-          </div>
-          <div>
-            <label for="mode">Mode</label>
-            <input type="number" id="mode" formControlName="mode">
-          </div>
-          <div>
-            <label for="reverse">Reverse</label>
-            <input type="number" id="reverse" formControlName="reverse">
-          </div>
-          <div>
-            <label for="speed">Speed</label>
-            <input type="number" id="speed" formControlName="speed">
-          </div>
-          <div>
-            <label for="split">Split</label>
-            <input type="number" id="split" formControlName="split">
-          </div>
+          <fieldset>
+            <label for="reverse">
+              <input type="checkbox" id="reverse" formControlName="reverse"> Reverse
+            </label>
+          </fieldset>
         </section>
         <button type="submit" [disabled]="!configForm.valid">Save</button>
       </form>
     </details>
     <details>
       <summary>Firmware update</summary>
-      <form method='POST' action='/update' enctype="multipart/form-data">
+      <form method="dialog"> <!-- method='POST' action='/update' enctype='multipart/form-data' -->
         <div class="field">
           <input type='file' name='update'>
         </div>

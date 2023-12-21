@@ -1,13 +1,12 @@
+import {ColorMapping} from '../type/color-mapping';
+
 export interface Config {
-  universe: number;
-  offset: number;
   pixels: number;
-  leds: number;
-  white: number;
+  colorMapping: ColorMapping;
+  white: boolean;
   brightness: number;
-  hsv: number;
-  mode: number;
-  reverse: number;
+  hsv: boolean;
+  reverse: boolean;
   speed: number;
   split: number;
 }

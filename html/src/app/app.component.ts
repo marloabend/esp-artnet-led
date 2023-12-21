@@ -1,7 +1,9 @@
 import {Component, OnInit} from '@angular/core';
-import {FormControl, FormGroup} from '@angular/forms';
+import {FormControl, FormGroup, Validators} from '@angular/forms';
 import {DeviceService} from './service/device.service';
 import {Config} from './model/config.model';
+import {ColorMapping, colorMapping} from './type/color-mapping';
+import {ArtnetConfig} from './model/artnet-config.model';
 import {concatMap, delay, of, retry, tap, timer} from 'rxjs';
 
 @Component({
@@ -10,6 +12,8 @@ import {concatMap, delay, of, retry, tap, timer} from 'rxjs';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit {
+
+  protected readonly colorMapping = colorMapping;
 
   healthy = false;
 
@@ -27,18 +31,29 @@ export class AppComponent implements OnInit {
 
   deviceInfo$ = this.device.discover();
 
+  modeList = Array(16)
+    .fill(0)
+    .map((mode, i) => ({id: i, description: 'TODO'}))
+    .map(mode => ({value: mode.id, name: `Mode ${mode.id}`}));
+
+  modeForm = new FormGroup({
+    mode: new FormControl<number>(0, [Validators.required, Validators.min(0), Validators.max(15)]),
+  });
+
+  artnetForm = new FormGroup({
+    universe: new FormControl<number>(0, [Validators.required]),
+    offset: new FormControl<number>(0, [Validators.required]),
+  });
+
   configForm = new FormGroup({
-    universe: new FormControl<number>(0),
-    offset: new FormControl<number>(0),
-    pixels: new FormControl<number>(0),
-    leds: new FormControl<number>(0),
-    white: new FormControl<number>(0),
-    brightness: new FormControl<number>(0),
-    hsv: new FormControl<number>(0),
-    mode: new FormControl<number>(0),
-    reverse: new FormControl<number>(0),
-    speed: new FormControl<number>(0),
-    split: new FormControl<number>(0),
+    pixels: new FormControl<number>(0, [Validators.required, Validators.min(0)]),
+    colorMapping: new FormControl<ColorMapping>('RGB', Validators.required),
+    white: new FormControl<boolean>(false, Validators.required),
+    speed: new FormControl<number>(0, Validators.required),
+    split: new FormControl<number>(0, Validators.required),
+    reverse: new FormControl<boolean>(false, Validators.required),
+    hsv: new FormControl<boolean>(false, Validators.required),
+    brightness: new FormControl<number>(255, [Validators.required, Validators.min(0), Validators.max(255)]),
   });
 
   constructor(private device: DeviceService) {}
@@ -48,6 +63,27 @@ export class AppComponent implements OnInit {
     this.device.getConfig().subscribe(config => {
       this.configForm.enable();
       this.configForm.patchValue(config);
+    });
+
+    this.modeForm.disable();
+    this.device.getMode().subscribe(mode => {
+      this.modeForm.enable();
+      this.modeForm.patchValue(mode);
+      this.modeForm.controls.mode.valueChanges.subscribe((mode) => {
+        if (mode !== null && !isNaN(mode) && this.modeForm.valid) {
+          this.modeForm.disable({emitEvent: false});
+          this.device.setMode({mode}).subscribe(mode => {
+            this.modeForm.patchValue(mode, {emitEvent: false});
+            this.modeForm.enable({emitEvent: false});
+          });
+        }
+      });
+    });
+
+    this.artnetForm.disable();
+    this.device.getChannel().subscribe(artnetConfig => {
+      this.artnetForm.enable();
+      this.artnetForm.patchValue(artnetConfig);
     });
 
     // Accordion behavior
@@ -76,6 +112,17 @@ export class AppComponent implements OnInit {
     });
   }
 
+  onSubmitChannel(): void {
+    if (!confirm('Confirm channel switch')) {
+      return;
+    }
+    this.artnetForm.disable();
+    this.device.setChannel(this.artnetForm.value as ArtnetConfig).subscribe((config) => {
+      this.artnetForm.patchValue(config);
+      this.artnetForm.enable();
+    });
+  }
+
   onReconnect(): void {
     if (confirm('Confirm network reconnect')) {
       this.device.reconnect().subscribe();
@@ -84,13 +131,13 @@ export class AppComponent implements OnInit {
 
   onReboot(): void {
     if (confirm('Confirm device reboot')) {
-      this.device.reset().subscribe();
+      this.device.restart().subscribe();
     }
   }
 
   onReset(): void {
     if (confirm('Confirmt factory reset')) {
-      this.device.defaults().subscribe();
+      this.device.reset().subscribe();
     }
   }
 }
